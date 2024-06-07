@@ -1,6 +1,6 @@
 <?php
 
-namespace Ucfopen\IsItDescriptive;
+namespace Taheralfayad\IsItDescriptive;
 
 class DescriptivenessModel {
     public function run($text, $actual_label) {
