@@ -1,0 +1,11 @@
+{
+    "name": "ucfopen/isitdescriptive",
+    "description": "This machine learning model takes in the anchor text of a link in HTML and determines whether or not it is descriptive of the link content.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Ucfopen\\IsItDescriptive\\": "src/"
+        }
+    },
+    "require": {}
+}
