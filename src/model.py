@@ -7,6 +7,7 @@ from imblearn.over_sampling import SMOTE
 from sklearn.linear_model import SGDClassifier
 from sklearn import metrics
 import joblib
+import os
 
 def evaluate_model(model, x_test, y_test):
     y_pred = model.predict(X_test)
@@ -20,42 +21,44 @@ def evaluate_model(model, x_test, y_test):
                                   index=[f'Actual {label}' for label in labels], 
                                   columns=[f'Predicted {label}' for label in labels])
 
+
+script_dir = os.path.dirname(os.path.realpath(__file__))
 try:
-    model = joblib.load('model.pkl')
-    vectorizer = joblib.load('vectorizer.pkl')
-    X_resampled, y_resampled = joblib.load('resampled_data.pkl')
+    model = joblib.load(os.path.join(script_dir, 'model.pkl'))
+    vectorizer = joblib.load(os.path.join(script_dir, 'vectorizer.pkl'))
+    X_resampled, y_resampled = joblib.load(os.path.join(script_dir, 'resampled_data.pkl'))
     X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.1, random_state=42)
 except FileNotFoundError:
-    data = pd.read_csv('results.csv')
+    data = pd.read_csv(os.path.join(script_dir, 'results.csv'))
     data = data.dropna()
     X = data['line']
     y = data['label']
 
     vectorizer = TfidfVectorizer()
     X_tfidf = vectorizer.fit_transform(X)
-    joblib.dump(vectorizer, 'vectorizer.pkl')
+    joblib.dump(vectorizer, os.path.join(script_dir, 'vectorizer.pkl'))
 
     smote = SMOTE(random_state=42)
     X_resampled, y_resampled = smote.fit_resample(X_tfidf, y)
-    joblib.dump((X_resampled, y_resampled), 'resampled_data.pkl')
+    joblib.dump((X_resampled, y_resampled), os.path.join(script_dir, 'resampled_data.pkl'))
 
     class_weights = {0: 1, 1: 3}
     model = SGDClassifier(loss='log_loss', random_state=42, class_weight=class_weights)
     X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.1, random_state=42)
     model.partial_fit(X_train, y_train, classes=np.unique(y_resampled))
-    joblib.dump(model, 'model.pkl')
+    joblib.dump(model, os.path.join(script_dir, 'model.pkl'))
 
     y_pred = model.predict(X_test)
     evaluate_model(model, X_test, y_test)
 
-def predict_and_update(text, actual_label):
+def predict_and_update(text, actual_label = None):
     text_tfidf = vectorizer.transform([text])
     prediction = model.predict(text_tfidf)
     prediction_result = "Non-descriptive" if prediction[0] == 1 else "Descriptive"
 
     if actual_label is not None and actual_label == 0 or actual_label == 1:
         model.partial_fit(text_tfidf, [actual_label])
-        joblib.dump(model, 'model.pkl')
+        joblib.dump(model, os.path.join(script_dir, 'model.pkl'))
         evaluate_model(model, X_test, y_test)
         actual_label = "Non-descriptive" if actual_label == 1 else "Descriptive"
         feedback = f"Model updated based on feedback. Prediction was: {prediction_result}, actual label was: {actual_label}"
@@ -65,9 +68,8 @@ def predict_and_update(text, actual_label):
 
 if __name__ == "__main__":
     prediction = sys.argv[1]
-    actual_label = sys.argv[2]
 
-    result = predict_and_update(prediction, int(actual_label))
+    result = predict_and_update(prediction)
 
     # Returns the prediction to the PHP wrapper
     print(int(result))
